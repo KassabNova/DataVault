@@ -98,7 +98,6 @@
 - [x] POS: scan barcode to add item to cart (hardware scanner input)
 - [x] POS: customer display (second screen showing cart total)
 - [x] Inventory: batch edit (select multiple → change condition/delete)
-- [ ] Inventory: drag-and-drop reorder (deferred — needs rank column + dnd-kit)
 - [x] Search: recent searches memory
 - [x] Search: search by set code (e.g., "mh3:42")
 - [x] Responsive/mobile layout for sidebar navigation
@@ -110,3 +109,4 @@
 - [x] Customer-facing price lookup kiosk mode (/kiosk)
 - [x] Tournament management module
 - [ ] Marketplace listing sync (CardMarket seller tools)
+- [ ] Inventory: drag-and-drop reorder (deferred — needs rank column + dnd-kit)

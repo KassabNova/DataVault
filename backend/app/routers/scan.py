@@ -8,11 +8,11 @@ router = APIRouter(prefix="/api/v1/scan", tags=["scan"])
 
 
 @router.post("/match")
-async def match_card(image: UploadFile = File(...), threshold: int = Query(12, ge=1, le=32)):
-    """Upload an image and get top card matches by perceptual hash."""
+async def match_card(image: UploadFile = File(...), threshold: int = Query(18, ge=1, le=32), game_id: str | None = None):
+    """Upload an image and get top card matches by perceptual hash. Optionally filter by game."""
     start = time.time()
     image_bytes = await image.read()
-    matches = await find_matches(image_bytes, threshold=threshold)
+    matches = await find_matches(image_bytes, threshold=threshold, game_id=game_id)
     elapsed = round((time.time() - start) * 1000)
 
     return {

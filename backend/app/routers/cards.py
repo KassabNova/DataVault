@@ -45,8 +45,11 @@ async def search_cards(
     except Exception:
         pass  # FTS table may not exist yet, fall back to ILIKE
 
-    # Fallback: ILIKE search
-    query = select(Card).where(Card.name_en.ilike(f"%{q}%"))
+    # Fallback: ILIKE search (match all words independently)
+    query = select(Card)
+    for word in q.split():
+        if len(word) >= 2:
+            query = query.where(Card.name_en.ilike(f"%{word}%"))
     if game:
         query = query.where(Card.game_id == game)
     results = (await db.execute(query.order_by(Card.name_en).offset(offset).limit(per_page))).scalars().all()

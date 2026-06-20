@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../services/api'
 import { playScanMatch } from '../services/sound'
 import { useToast } from '../components/Toast'
+import { recognizeText, extractCardName } from '../services/ocr'
 
 interface Match {
   card_id: string; confidence: number; name: string; image_url: string | null; set_id: string; distance: number
@@ -19,6 +20,7 @@ export default function Scanner() {
   const [session, setSession] = useState<Match[]>([])
   const [autoMode, setAutoMode] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
+  const [gameFilter, setGameFilter] = useState('')
   const autoTimer = useRef<ReturnType<typeof setInterval>>(null!)
 
   const startCamera = async () => {
@@ -35,32 +37,72 @@ export default function Scanner() {
   const capture = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || scanning) return
     setScanning(true)
+    setMatches([])
 
+    const video = videoRef.current
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')!
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    ctx.drawImage(videoRef.current, 0, 0)
+
+    // Crop center 45% width, 90% height (portrait card in landscape video)
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    const cropW = Math.round(vw * 0.45)
+    const cropH = Math.round(vh * 0.9)
+    const cropX = Math.round((vw - cropW) / 2)
+    const cropY = Math.round((vh - cropH) / 2)
+
+    canvas.width = cropW
+    canvas.height = cropH
+    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
 
     canvas.toBlob(async (blob) => {
       if (!blob) { setScanning(false); return }
-      const form = new FormData()
-      form.append('image', blob, 'capture.jpg')
+
+      let results: any[] = []
+
+      // Step 1: Try OCR → text search
       try {
-        const { data } = await api.post('/scan/match', form)
-        const results = data.matches || []
-        setMatches(results)
-        if (results.length > 0) {
-          playScanMatch()
-          // In batch mode, auto-add the top match if confidence > 85%
-          if (batchMode && results[0].confidence >= 0.85) {
-            await addToInventory(results[0])
+        const ocrText = await recognizeText(blob)
+        const candidates = extractCardName(ocrText)
+
+        for (const candidate of candidates) {
+          if (results.length > 0) break
+          const params: Record<string, string> = { q: candidate, per_page: '5' }
+          if (gameFilter) params.game = gameFilter
+          const { data } = await api.get('/cards/search', { params })
+          if (data.length > 0) {
+            results = data.map((c: any) => ({
+              card_id: c.id, name: c.name, image_url: c.image_url,
+              set_id: c.set_id, confidence: 0.9, distance: 0,
+            }))
           }
         }
-      } catch { setMatches([]) }
+      } catch {}
+
+      // Step 2: Fallback to pHash if OCR found nothing
+      if (results.length === 0) {
+        try {
+          const form = new FormData()
+          form.append('image', blob, 'capture.jpg')
+          const params = gameFilter ? `?game_id=${gameFilter}` : ''
+          const { data } = await api.post(`/scan/match${params}`, form)
+          results = data.matches || []
+        } catch {}
+      }
+
+      setMatches(results)
+      if (results.length > 0) {
+        playScanMatch()
+        if (batchMode && results[0].confidence >= 0.85) {
+          await addToInventory(results[0])
+        }
+      } else {
+        toast('No match found', 'info')
+      }
+
       setScanning(false)
     }, 'image/jpeg', 0.85)
-  }, [scanning, batchMode])
+  }, [scanning, batchMode, gameFilter])
 
   // Auto-capture every 2s
   useEffect(() => {
@@ -102,9 +144,24 @@ export default function Scanner() {
           </div>
         </div>
 
+        {/* Game filter */}
+        <div className="flex gap-1 mb-3 flex-wrap">
+          {[{ id: '', label: 'All' }, { id: 'mtg', label: 'MTG' }, { id: 'pokemon', label: 'Pokémon' }, { id: 'yugioh', label: 'YGO' }, { id: 'lorcana', label: 'Lorcana' }, { id: 'onepiece', label: 'OP' }, { id: 'swu', label: 'SWU' }, { id: 'fab', label: 'FaB' }, { id: 'riftbound', label: 'Riftbound' }].map(g => (
+            <button key={g.id} onClick={() => setGameFilter(g.id)} className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${gameFilter === g.id ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{g.label}</button>
+          ))}
+        </div>
+
         <div className="bg-black rounded overflow-hidden relative w-full max-w-xl">
           <video ref={videoRef} className="w-full" playsInline muted />
           <canvas ref={canvasRef} className="hidden" />
+          {/* Card placement guide - portrait card in landscape video */}
+          {streaming && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="border-2 border-dashed border-indigo-400/70 rounded-lg" style={{ width: '45%', height: '90%' }}>
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-indigo-300 whitespace-nowrap">Centra la carta aquí</div>
+              </div>
+            </div>
+          )}
           {!streaming && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900 aspect-video">
               <button onClick={startCamera} className="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700">
