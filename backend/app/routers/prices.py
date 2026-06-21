@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,8 +25,8 @@ async def trigger_sync():
     return {"status": "started"}
 
 
-@router.get("/prices/{card_id}")
-async def get_card_prices(card_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/prices/lookup")
+async def get_card_prices(card_id: str = Query(...), db: AsyncSession = Depends(get_db)):
     card = (await db.execute(select(Card).where(Card.id == card_id))).scalar_one_or_none()
     if not card:
         raise HTTPException(404, "Card not found")
@@ -53,8 +53,8 @@ async def get_card_prices(card_id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/prices/{card_id}/history")
-async def get_price_history(card_id: str, limit: int = 50, db: AsyncSession = Depends(get_db)):
+@router.get("/prices/history")
+async def get_price_history(card_id: str = Query(...), limit: int = 50, db: AsyncSession = Depends(get_db)):
     records = (await db.execute(
         select(PriceRecord)
         .where(PriceRecord.card_id == card_id)

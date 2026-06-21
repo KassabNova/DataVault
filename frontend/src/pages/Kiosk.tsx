@@ -18,7 +18,7 @@ export default function Kiosk() {
 
   const selectCard = async (card: any) => {
     setSelected(card)
-    try { const { data } = await api.get(`/prices/${card.id}`); setPrice(data) } catch { setPrice(null) }
+    try { const { data } = await api.get('/prices/lookup', { params: { card_id: card.id } }); setPrice(data) } catch { setPrice(null) }
   }
 
   const reset = () => { setSelected(null); setPrice(null); setQuery(''); setResults([]) }

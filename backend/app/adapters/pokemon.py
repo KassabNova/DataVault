@@ -25,7 +25,8 @@ class Adapter(BaseAdapter):
             return await self._sync_cards(client, sets)
 
     async def sync_prices(self, card_ids: list[str] | None = None) -> int:
-        return 0  # pokemontcg.io has limited price data
+        from app.services.tcgtracking import sync_prices_from_tcgtracking
+        return await sync_prices_from_tcgtracking(GAME_ID)  # pokemontcg.io has limited price data
 
     async def search(self, query: str, locale: str = "en") -> list[CardResult]:
         async with httpx.AsyncClient(timeout=15) as client:

@@ -64,10 +64,11 @@ export default function Catalog() {
 
   const openDetail = async (card: CardItem) => {
     setSelected(card)
+    setPriceData(null)
     try {
-      const { data } = await api.get(`/prices/${card.id}`)
+      const { data } = await api.get('/prices/lookup', { params: { card_id: card.id } })
       setPriceData(data)
-    } catch { setPriceData(null) }
+    } catch { setPriceData({ store: {} }) }
   }
 
   return (

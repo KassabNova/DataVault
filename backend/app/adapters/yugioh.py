@@ -79,7 +79,8 @@ class Adapter(BaseAdapter):
         return len(cards_batch)
 
     async def sync_prices(self, card_ids: list[str] | None = None) -> int:
-        return 0
+        from app.services.tcgtracking import sync_prices_from_tcgtracking
+        return await sync_prices_from_tcgtracking(GAME_ID)
 
     async def search(self, query: str, locale: str = "en") -> list[CardResult]:
         from sqlalchemy import select

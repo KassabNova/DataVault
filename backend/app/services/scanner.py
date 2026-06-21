@@ -1,4 +1,5 @@
 """Perceptual hash computation and matching using Pillow only (DCT-based average hash)."""
+import asyncio
 import logging
 import math
 from io import BytesIO
@@ -175,8 +176,11 @@ async def build_hash_index(game_id: str | None = None, batch_size: int = 100) ->
                     phash = compute_phash(resp.content)
                     phash16 = compute_phash16(resp.content)
                     hashes.append({"card_id": card_id, "phash": phash, "phash16": phash16})
+                elif resp.status_code == 403:
+                    await asyncio.sleep(2)  # back off on 403
             except Exception:
                 continue
+            await asyncio.sleep(0.2)  # 200ms between requests
 
     if hashes:
         async with async_session() as session:
