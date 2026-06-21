@@ -151,6 +151,12 @@ export default function Catalog() {
                 <p className="text-sm text-gray-500">{selected.set_id} · #{selected.collector_number}</p>
                 <p className="text-sm text-gray-500 mb-3">{selected.rarity} · {selected.card_type}</p>
 
+                {priceData === null && (
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-2/3"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+                  </div>
+                )}
                 {priceData?.store?.market_price && (
                   <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 space-y-1 text-sm">
                     <div className="flex justify-between"><span>{t('catalog.market')}</span><span className="font-medium">${priceData.store.market_price} MXN</span></div>
